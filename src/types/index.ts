@@ -1,14 +1,14 @@
 export type Role = 'waiter' | 'barman' | 'kitchen' | 'admin';
 
 export type User = {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: Role;
 };
 
 export type MenuItem = {
-  id: number;
+  id: string;
   name: string;
   category: 'food' | 'drink' | 'dessert';
   price: number;
@@ -18,7 +18,7 @@ export type MenuItem = {
 
 export type OrderItem = {
   id: number;
-  menuItemId: number;
+  menuItemId: string;
   name: string;
   price: number;
   quantity: number;
@@ -30,16 +30,14 @@ export type OrderItem = {
 export type OrderStatus = 'pending' | 'in-progress' | 'ready' | 'completed' | 'cancelled';
 
 export type Order = {
-  id: number;
-  tableNumber: number;
-  waiterId: number;
-  waiterName: string;
-  status: OrderStatus;
+  id: string;
+  tableId: string;
+  waiter?: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   items: OrderItem[];
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-  totalAmount: number;
+  total: number;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type StatisticsData = {
@@ -52,4 +50,20 @@ export type StatisticsData = {
     drink: number;
     dessert: number;
   };
+};
+
+export type Table = {
+  id: string;
+  number: number;
+  capacity: number;
+  status: 'available' | 'occupied' | 'reserved';
+};
+
+export type InventoryItem = {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  price: number;
 };

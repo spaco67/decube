@@ -1,21 +1,26 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useOrders } from '../../contexts/OrderContext';
-import { useEffect } from 'react';
-import { MenuItem, OrderItem } from '../../types';
-import { Plus, Minus, Trash2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useOrders } from "../../contexts/OrderContext";
+import { useEffect } from "react";
+import { MenuItem, OrderItem } from "../../types";
+import { Plus, Minus, Trash2 } from "lucide-react";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../contexts/AuthContext";
 
 const NewOrderForm: React.FC = () => {
   const navigate = useNavigate();
   const { createOrder } = useOrders();
+  const { user } = useAuth();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tables, setTables] = useState<Array<{ id: string; number: number }>>([]);
+  const [tables, setTables] = useState<Array<{ id: string; number: number }>>(
+    []
+  );
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<MenuItem['category']>('food');
+  const [activeCategory, setActiveCategory] =
+    useState<MenuItem["category"]>("food");
 
   useEffect(() => {
     fetchMenuItems();
@@ -25,9 +30,9 @@ const NewOrderForm: React.FC = () => {
   const fetchTables = async () => {
     try {
       const { data, error } = await supabase
-        .from('tables')
-        .select('id, number')
-        .order('number');
+        .from("tables")
+        .select("id, number")
+        .order("number");
 
       if (error) throw error;
 
@@ -37,7 +42,7 @@ const NewOrderForm: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.message);
-      console.error('Error fetching tables:', err);
+      console.error("Error fetching tables:", err);
     }
   };
 
@@ -45,77 +50,55 @@ const NewOrderForm: React.FC = () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from('inventory_items')
-        .select('*')
-        .gt('quantity', 0)
-        .order('name');
+        .from("menu_items")
+        .select("*")
+        .order("name");
 
       if (error) throw error;
 
-      setMenuItems(data.map(item => ({
+      setMenuItems(
+        data.map((item) => ({
         id: item.id,
         name: item.name,
-        category: mapCategory(item.category),
+          category: item.category as MenuItem["category"],
         price: item.price,
-        preparationType: mapPreparationType(item.category),
-        quantity: item.quantity
-      })));
+          preparationType: item.preparation_type as "kitchen" | "bar",
+          quantity: 999, // Since menu_items doesn't track quantity, we'll assume available
+        }))
+      );
     } catch (err: any) {
       setError(err.message);
-      console.error('Error fetching menu items:', err);
+      console.error("Error fetching menu items:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const mapCategory = (inventoryCategory: string): MenuItem['category'] => {
-    switch (inventoryCategory) {
-      case 'beverages':
-        return 'drink';
-      case 'meat':
-      case 'vegetables':
-      case 'dry-goods':
-      case 'spices':
-        return 'food';
-      case 'dairy':
-        return 'dessert';
-      default:
-        return 'food';
-    }
-  };
-
-  const mapPreparationType = (inventoryCategory: string): 'kitchen' | 'bar' => {
-    return inventoryCategory === 'beverages' ? 'bar' : 'kitchen';
-  };
-
   const categories = [
-    { id: 'food', label: 'Food' },
-    { id: 'drink', label: 'Drinks' },
-    { id: 'dessert', label: 'Desserts' },
+    { id: "food", label: "Food" },
+    { id: "drink", label: "Drinks" },
+    { id: "dessert", label: "Desserts" },
   ];
 
-  const filteredItems = menuItems.filter(item => item.category === activeCategory);
+  const filteredItems = menuItems.filter(
+    (item) => item.category === activeCategory
+  );
 
   const addItemToOrder = (menuItem: MenuItem) => {
-    // Check if there's enough quantity in inventory
-    const existingQuantity = selectedItems.find(item => item.menuItemId === menuItem.id)?.quantity || 0;
-    if (existingQuantity + 1 > menuItem.quantity) {
-      setError(`Not enough ${menuItem.name} in inventory (${menuItem.quantity} available)`);
-      return;
-    }
-
-    const existingItem = selectedItems.find(item => item.menuItemId === menuItem.id);
+    const existingItem = selectedItems.find(
+      (item) => item.menuItemId === menuItem.id
+    );
     
     if (existingItem) {
-      setSelectedItems(items =>
-        items.map(item =>
+      setSelectedItems((items) =>
+        items.map((item) =>
           item.menuItemId === menuItem.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
       );
     } else {
-      setSelectedItems(items => [
+      setSelectedItems((items) => [
         ...items,
         {
           id: 0, // Will be set by the backend
@@ -124,65 +107,65 @@ const NewOrderForm: React.FC = () => {
           price: menuItem.price,
           quantity: 1,
           preparationType: menuItem.preparationType,
-          status: 'pending',
+          status: "pending",
         },
       ]);
     }
   };
 
-  const updateItemQuantity = (menuItemId: number, change: number) => {
-    const menuItem = menuItems.find(item => item.id === menuItemId);
+  const updateItemQuantity = (menuItemId: string, change: number) => {
+    const menuItem = menuItems.find((item) => item.id === menuItemId);
     if (!menuItem) return;
 
-    const existingItem = selectedItems.find(item => item.menuItemId === menuItemId);
+    const existingItem = selectedItems.find(
+      (item) => item.menuItemId === menuItemId
+    );
     const newQuantity = (existingItem?.quantity || 0) + change;
 
-    // Check if there's enough quantity in inventory
-    if (newQuantity > menuItem.quantity) {
-      setError(`Not enough ${menuItem.name} in inventory (${menuItem.quantity} available)`);
-      return;
-    }
-
-    setSelectedItems(items =>
-      items.map(item => {
+    setSelectedItems((items) =>
+      items
+        .map((item) => {
         if (item.menuItemId === menuItemId) {
           return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
         }
         return item;
-      }).filter(item => item.quantity > 0)
+        })
+        .filter((item) => item.quantity > 0)
     );
   };
 
-  const removeItem = (menuItemId: number) => {
-    setSelectedItems(items => items.filter(item => item.menuItemId !== menuItemId));
+  const removeItem = (menuItemId: string) => {
+    setSelectedItems((items) =>
+      items.filter((item) => item.menuItemId !== menuItemId)
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedItems.length === 0 || !selectedTableId) return;
     setError(null);
-    setError(null);
 
     try {
       // First check if table exists and is available
       const { data: tableData, error: tableError } = await supabase
-        .from('tables')
-        .select('status')
-        .eq('id', selectedTableId)
+        .from("tables")
+        .select("status")
+        .eq("id", selectedTableId)
         .single();
 
-      if (tableError) throw new Error('Failed to check table status');
-      if (tableData.status !== 'available') {
-        throw new Error('Selected table is not available');
+      if (tableError) throw new Error("Failed to check table status");
+      if (tableData.status !== "available") {
+        throw new Error("Selected table is not available");
       }
 
       // Create the order
       const { data: orderData, error: orderError } = await supabase
-        .from('orders')
+        .from("orders")
         .insert({
           table_id: selectedTableId,
-          status: 'pending',
-          total_amount: totalAmount
+          waiter_id: user?.id,
+          status: "pending",
+          total_amount: totalAmount,
         })
         .select()
         .single();
@@ -190,32 +173,32 @@ const NewOrderForm: React.FC = () => {
       if (orderError) throw orderError;
 
       // Create order items
-      const orderItems = selectedItems.map(item => ({
+      const orderItems = selectedItems.map((item) => ({
         order_id: orderData.id,
         menu_item_id: item.menuItemId,
         quantity: item.quantity,
         price: item.price,
-        status: 'pending'
+        status: "pending",
       }));
 
       const { error: itemsError } = await supabase
-        .from('order_items')
+        .from("order_items")
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
 
       // Update table status
       const { error: updateTableError } = await supabase
-        .from('tables')
-        .update({ status: 'occupied' })
-        .eq('id', selectedTableId);
+        .from("tables")
+        .update({ status: "occupied" })
+        .eq("id", selectedTableId);
 
       if (updateTableError) throw updateTableError;
 
-      navigate('/waiter');
+      navigate("/waiter");
     } catch (error: any) {
-      console.error('Failed to create order:', error);
-      setError(error.message || 'Failed to create order. Please try again.');
+      console.error("Failed to create order:", error);
+      setError(error.message || "Failed to create order. Please try again.");
     }
   };
 
@@ -230,7 +213,9 @@ const NewOrderForm: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden relative">
         {isLoading && (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center">
-            <p className="text-gray-500 dark:text-gray-400">Loading menu items...</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              Loading menu items...
+            </p>
           </div>
         )}
         
@@ -242,14 +227,16 @@ const NewOrderForm: React.FC = () => {
 
         <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="flex -mb-px">
-            {categories.map(category => (
+            {categories.map((category) => (
               <button
                 key={category.id}
-                onClick={() => setActiveCategory(category.id as MenuItem['category'])}
+                onClick={() =>
+                  setActiveCategory(category.id as MenuItem["category"])
+                }
                 className={`py-4 px-6 text-sm font-medium ${
                   activeCategory === category.id
-                    ? 'border-b-2 border-teal-500 text-teal-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? "border-b-2 border-teal-500 text-teal-600"
+                    : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 {category.label}
@@ -259,14 +246,18 @@ const NewOrderForm: React.FC = () => {
         </div>
 
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filteredItems.map(item => (
+          {filteredItems.map((item) => (
             <button
               key={item.id}
               onClick={() => addItemToOrder(item)}
               className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
             >
-              <h3 className="font-medium text-gray-900 dark:text-white">{item.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">₦{item.price.toFixed(2)}</p>
+              <h3 className="font-medium text-gray-900 dark:text-white">
+                {item.name}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                ₦{item.price.toFixed(2)}
+              </p>
             </button>
           ))}
         </div>
@@ -280,25 +271,32 @@ const NewOrderForm: React.FC = () => {
               Table Number
             </label>
             <select
-              value={selectedTableId || ''}
+              value={selectedTableId || ""}
               onChange={(e) => setSelectedTableId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md"
             >
-              {tables.map(table => (
+              {tables.map((table) => (
                 <option key={table.id} value={table.id}>
                   Table {table.number}
                 </option>
               ))}
             </select>
           </div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Order Summary</h2>
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+            Order Summary
+          </h2>
         </div>
 
         <div className="p-4 space-y-4">
-          {selectedItems.map(item => (
-            <div key={item.menuItemId} className="flex items-center justify-between">
+          {selectedItems.map((item) => (
+            <div
+              key={item.menuItemId}
+              className="flex items-center justify-between"
+            >
               <div className="flex-1">
-                <h3 className="font-medium text-gray-900 dark:text-white">{item.name}</h3>
+                <h3 className="font-medium text-gray-900 dark:text-white">
+                  {item.name}
+                </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   ₦{(item.price * item.quantity).toFixed(2)}
                 </p>
@@ -336,7 +334,9 @@ const NewOrderForm: React.FC = () => {
 
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex justify-between mb-4">
-            <span className="font-medium text-gray-900 dark:text-white">Total</span>
+            <span className="font-medium text-gray-900 dark:text-white">
+              Total
+            </span>
             <span className="font-medium text-gray-900 dark:text-white">
               ₦{totalAmount.toFixed(2)}
             </span>
@@ -346,8 +346,8 @@ const NewOrderForm: React.FC = () => {
             disabled={selectedItems.length === 0 || !selectedTableId}
             className={`w-full py-2 px-4 rounded-md text-white font-medium ${
               selectedItems.length > 0 && selectedTableId
-                ? 'bg-teal-600 hover:bg-teal-700'
-                : 'bg-gray-400 cursor-not-allowed'
+                ? "bg-teal-600 hover:bg-teal-700"
+                : "bg-gray-400 cursor-not-allowed"
             } transition-colors`}
           >
             Place Order

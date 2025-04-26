@@ -9,11 +9,47 @@ interface Message {
   isStreaming?: boolean;
 }
 
+// Interface for order item
+interface OrderItem {
+  id: string;
+  menu_item_id: string;
+  quantity: number;
+  price: number;
+  status: string;
+  notes?: string;
+}
+
+// Interface for menu item
+interface MenuItem {
+  id: string;
+  name: string;
+  category: string;
+  preparation_type: string;
+  price: number;
+}
+
+// Interface for staff member
+interface StaffMember {
+  id: string;
+  name?: string;
+  role: string;
+  email?: string;
+}
+
 // Type definitions for the analytics data
 interface AnalyticsData {
-  orders: any[];
-  menuItems: any[];
-  staff: any[];
+  orders: Array<{
+    id: string;
+    table_id: string;
+    waiter_id: string;
+    status: string;
+    total_amount: number;
+    created_at: string;
+    items: OrderItem[];
+    [key: string]: any;
+  }>;
+  menuItems: MenuItem[];
+  staff: StaffMember[];
   tables: any[];
   analytics: {
     totalSales: number;
@@ -44,7 +80,6 @@ const ChatBot: React.FC = () => {
     null
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const apiKey = "AIzaSyCPHTqN51o1FFlDcOx-d_gkKtLWt3kj6VU";
   const retryCount = useRef(0);
   const maxRetries = 3;
   const abortController = useRef<AbortController | null>(null);
@@ -254,6 +289,19 @@ const ChatBot: React.FC = () => {
           return acc;
         }, {} as Record<string, number>) || {};
 
+      // Calculate sales by staff (individual performance)
+      const salesByStaff =
+        staffData?.reduce((acc, staff) => {
+          const staffOrders =
+            ordersData?.filter((order) => order.waiter_id === staff.id) || [];
+          const staffSales = staffOrders.reduce(
+            (sum, order) => sum + (order.total_amount || 0),
+            0
+          );
+          acc[staff.name || staff.id] = staffSales;
+          return acc;
+        }, {} as Record<string, number>) || {};
+
       console.log("Successfully compiled analytics data");
 
       return {
@@ -308,90 +356,16 @@ const ChatBot: React.FC = () => {
     );
   };
 
-  // Direct API call to Gemini
-  const callGeminiAPI = async (
+  // Generate response based on analytics data
+  const generateAnalyticsResponse = async (
     query: string,
     data: AnalyticsData
   ): Promise<string> => {
-    console.log("Calling Gemini API with query:", query);
+    console.log("Generating analytics response for query:", query);
 
-    try {
-      const prompt = `You are an analytics assistant for a restaurant. Analyze the following data and provide insights about: ${query}
+    // Simulate processing delay for better UX
+    await delay(800);
 
-Data Summary:
-- Total Orders: ${data.analytics.orderCount}
-- Total Sales: ₦${data.analytics.totalSales.toLocaleString()}
-- Average Order Value: ₦${data.analytics.averageOrderValue.toLocaleString()}
-- Top Items: ${data.analytics.topItems
-        .slice(0, 3)
-        .map((item) => `${item.name} (₦${item.revenue.toLocaleString()})`)
-        .join(", ")}
-- Bar Items Count: ${data.analytics.barItemsCount}
-- Kitchen Items Count: ${data.analytics.kitchenItemsCount}
-- Sales by Role: ${Object.entries(data.analytics.salesByRole)
-        .map(([role, sales]) => `${role}: ₦${sales.toLocaleString()}`)
-        .join(", ")}
-
-Please provide a detailed analysis focusing on the specific query: ${query}`;
-
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" +
-          apiKey,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 1024,
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          `Gemini API error: ${errorData.error?.message || response.statusText}`
-        );
-      }
-
-      const result = await response.json();
-
-      if (
-        result.candidates &&
-        result.candidates.length > 0 &&
-        result.candidates[0].content &&
-        result.candidates[0].content.parts &&
-        result.candidates[0].content.parts.length > 0
-      ) {
-        const text = result.candidates[0].content.parts[0].text;
-        console.log("Gemini API response:", text);
-        return text;
-      } else {
-        throw new Error("Unexpected API response format");
-      }
-    } catch (error: any) {
-      console.error("Gemini API Error:", error);
-      throw error;
-    }
-  };
-
-  // Fallback for when the API is unavailable
-  const getMockResponse = (query: string, data: AnalyticsData): string => {
     const topItems =
       data.analytics.topItems.length > 0
         ? data.analytics.topItems
@@ -400,46 +374,143 @@ Please provide a detailed analysis focusing on the specific query: ${query}`;
             .join(", ")
         : "No data available";
 
+    // Information about sales by day
+    const salesByDayText = Object.entries(data.analytics.salesByDay)
+      .sort((a, b) => {
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        return days.indexOf(a[0]) - days.indexOf(b[0]);
+      })
+      .map(([day, amount]) => `${day}: ₦${amount.toLocaleString()}`)
+      .join(", ");
+
+    // Top staff performers
+    const salesByStaff = data.staff.reduce(
+      (acc: Record<string, number>, staff) => {
+        const staffOrders =
+          data.orders.filter((order) => order.waiter_id === staff.id) || [];
+        const salesAmount = staffOrders.reduce(
+          (sum: number, order) => sum + (order.total_amount || 0),
+          0
+        );
+        acc[staff.name || staff.id] = salesAmount;
+        return acc;
+      },
+      {}
+    );
+
+    const topStaff = Object.entries(salesByStaff)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name, sales]) => `${name} (₦${sales.toLocaleString()})`)
+      .join(", ");
+
+    // Compare bar vs kitchen
+    const barItems =
+      data.menuItems.filter((item) => item.preparation_type === "bar") || [];
+    const kitchenItems =
+      data.menuItems.filter((item) => item.preparation_type === "kitchen") ||
+      [];
+
+    const barSales = data.orders
+      .flatMap((order) =>
+        order.items
+          .filter((item: OrderItem) => {
+            const menuItem = data.menuItems.find(
+              (mi) => mi.id === item.menu_item_id
+            );
+            return menuItem && menuItem.preparation_type === "bar";
+          })
+          .reduce(
+            (sum: number, item: OrderItem) => sum + item.price * item.quantity,
+            0
+          )
+      )
+      .reduce((total, amount) => total + amount, 0);
+
+    const kitchenSales = data.orders
+      .flatMap((order) =>
+        order.items
+          .filter((item: OrderItem) => {
+            const menuItem = data.menuItems.find(
+              (mi) => mi.id === item.menu_item_id
+            );
+            return menuItem && menuItem.preparation_type === "kitchen";
+          })
+          .reduce(
+            (sum: number, item: OrderItem) => sum + item.price * item.quantity,
+            0
+          )
+      )
+      .reduce((total, amount) => total + amount, 0);
+
+    const compareText = `The bar generated ₦${barSales.toLocaleString()} with ${
+      barItems.length
+    } items, while the kitchen generated ₦${kitchenSales.toLocaleString()} with ${
+      kitchenItems.length
+    } items.`;
+
+    // Generate appropriate response based on query keywords
     if (
-      query.toLowerCase().includes("top selling") ||
-      query.toLowerCase().includes("popular items")
+      query.toLowerCase().includes("top") &&
+      query.toLowerCase().includes("sell")
     ) {
-      return `Based on the analytics data, your top selling items are: ${topItems}. These items are driving significant revenue for your restaurant.`;
+      return `Based on our analytics data, the top selling items are: ${topItems}. These items are driving significant revenue for your restaurant and should be highlighted in promotions.`;
     }
 
     if (
-      query.toLowerCase().includes("sales trend") ||
-      query.toLowerCase().includes("week")
+      query.toLowerCase().includes("sales") &&
+      query.toLowerCase().includes("trend")
     ) {
-      return `I can see that your sales trends over the week show variations, with total sales of ₦${data.analytics.totalSales.toLocaleString()} across ${
+      return `Your sales trends over the week show the following pattern: ${salesByDayText}. Total sales reached ₦${data.analytics.totalSales.toLocaleString()} across ${
         data.analytics.orderCount
-      } orders. Your average order value is ₦${data.analytics.averageOrderValue.toLocaleString()}.`;
+      } orders, with an average order value of ₦${data.analytics.averageOrderValue.toLocaleString()}.`;
     }
 
     if (
       query.toLowerCase().includes("staff") ||
+      query.toLowerCase().includes("waiter") ||
       query.toLowerCase().includes("highest sales")
     ) {
-      const roleEntries = Object.entries(data.analytics.salesByRole);
-      if (roleEntries.length > 0) {
-        const highestRole = roleEntries.sort((a, b) => b[1] - a[1])[0];
-        return `Based on the available data, the "${
-          highestRole[0]
-        }" role has generated the highest sales at ₦${highestRole[1].toLocaleString()}.`;
-      }
-      return "I don't have enough data about staff performance to provide detailed insights.";
+      return `Based on our data, your top performing staff members are: ${topStaff}. Staff performance varies by role, with the following breakdown by role: ${Object.entries(
+        data.analytics.salesByRole
+      )
+        .map(([role, sales]) => `${role}: ₦${sales.toLocaleString()}`)
+        .join(", ")}.`;
     }
 
     if (
-      query.toLowerCase().includes("bar") ||
+      query.toLowerCase().includes("bar") &&
       query.toLowerCase().includes("kitchen")
     ) {
-      return `Your restaurant has ${data.analytics.barItemsCount} bar items and ${data.analytics.kitchenItemsCount} kitchen items. The performance varies between these categories.`;
+      return (
+        compareText +
+        ` This represents a ${
+          barSales > kitchenSales ? "higher" : "lower"
+        } revenue per item for bar items compared to kitchen items.`
+      );
     }
 
-    return `Based on your analytics data, I can see your restaurant has made ₦${data.analytics.totalSales.toLocaleString()} in total sales from ${
+    if (
+      query.toLowerCase().includes("average") &&
+      query.toLowerCase().includes("order")
+    ) {
+      return `The average order value is ₦${data.analytics.averageOrderValue.toLocaleString()}, calculated from ${
+        data.analytics.orderCount
+      } total orders. This is an important metric to track as it directly impacts your profitability.`;
+    }
+
+    // Default comprehensive response
+    return `Based on our analytics data, your restaurant has made ₦${data.analytics.totalSales.toLocaleString()} in total sales from ${
       data.analytics.orderCount
-    } orders, with an average order value of ₦${data.analytics.averageOrderValue.toLocaleString()}. Your top selling items include ${topItems}.`;
+    } orders, with an average order value of ₦${data.analytics.averageOrderValue.toLocaleString()}. 
+    
+Top selling items include ${topItems}. 
+
+In terms of staff performance, your top performers are ${topStaff}.
+
+${compareText}
+
+Sales distribution by day: ${salesByDayText}.`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -476,18 +547,8 @@ Please provide a detailed analysis focusing on the specific query: ${query}`;
         },
       ]);
 
-      let analysisResult;
-
-      // Try to use Gemini API, fallback to mock response if API fails
-      try {
-        analysisResult = await callGeminiAPI(userMessage, data);
-      } catch (apiError) {
-        console.warn(
-          "Falling back to mock response due to API error:",
-          apiError
-        );
-        analysisResult = getMockResponse(userMessage, data);
-      }
+      // Generate response based on analytics data
+      const analysisResult = await generateAnalyticsResponse(userMessage, data);
 
       // Update the message with our analysis
       setMessages((prev) =>

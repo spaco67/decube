@@ -7,6 +7,7 @@ import {
   Wallet,
   BanknoteIcon,
   DollarSign,
+  Hash,
 } from "lucide-react";
 import { Order, OrderStatus } from "../../types";
 import { useState, useEffect } from "react";
@@ -19,6 +20,7 @@ interface OrderCardProps {
   actionText?: string;
   showDetails?: boolean;
   showPayment?: boolean;
+  isWaiter?: boolean;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -27,23 +29,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
   actionText = "Process Order",
   showDetails = false,
   showPayment = false,
+  isWaiter = false,
 }) => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const { processPayment } = useOrders();
-  const [tableNumber, setTableNumber] = useState<number | null>(null);
   const [waiterName, setWaiterName] = useState<string>("");
   const [itemsWithDetails, setItemsWithDetails] = useState<any[]>([]);
 
   useEffect(() => {
-    // Fetch table number if we only have table_id
-    if (order.table_id && !tableNumber) {
-      fetchTableNumber(order.table_id);
-    } else if (order.tableId && !tableNumber) {
-      fetchTableNumber(order.tableId);
-    }
-
     // Initialize waiter name if available
     if (order.waiterName && !waiterName) {
       setWaiterName(order.waiterName);
@@ -57,24 +52,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
     if (order.items && order.items.length > 0) {
       normalizeItems(order.items);
     }
-  }, [order, tableNumber, waiterName]);
-
-  const fetchTableNumber = async (tableId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("tables")
-        .select("number")
-        .eq("id", tableId)
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        setTableNumber(data.number);
-      }
-    } catch (err) {
-      console.error("Error fetching table number:", err);
-    }
-  };
+  }, [order, waiterName]);
 
   const fetchWaiterName = async (waiterId: string) => {
     try {
@@ -177,8 +155,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
       {/* Header */}
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <span className="font-medium text-gray-800 dark:text-gray-200">
-            Table {tableNumber || "..."}
+          <span className="font-medium text-gray-800 dark:text-gray-200 flex items-center">
+            <Hash size={16} className="mr-1" />
+            {order.id.substring(0, 8)}
           </span>
           <span
             className={`px-2 py-1 text-xs rounded-full ${

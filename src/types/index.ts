@@ -1,4 +1,4 @@
-export type Role = 'waiter' | 'barman' | 'kitchen' | 'admin';
+export type Role = 'waiter' | 'barman' | 'kitchen' | 'admin' | 'accountant';
 
 export type User = {
   id: string;
@@ -31,7 +31,8 @@ export type OrderStatus = 'pending' | 'in-progress' | 'ready' | 'completed' | 'c
 
 export type Order = {
   id: string;
-  tableId: string;
+  tableId?: string;
+  waiter_id?: string;
   waiter?: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   items: OrderItem[];
@@ -66,4 +67,17 @@ export type InventoryItem = {
   quantity: number;
   unit: string;
   price: number;
+};
+
+export type Receipt = {
+  id: string;
+  orderId: string;
+  createdBy: string;
+  filename?: string;
+  fileUrl?: string;
+  sharedUrl?: string;
+  sharedPlatform?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  order?: Order;
 };

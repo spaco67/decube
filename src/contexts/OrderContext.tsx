@@ -12,7 +12,7 @@ import { sendTransactionNotification } from "../lib/email";
 
 interface OrderContextType {
   orders: Order[];
-  createOrder: (tableId: string, items: OrderItem[]) => Promise<Order>;
+  createOrder: (items: OrderItem[]) => Promise<Order>;
   updateOrderStatus: (
     orderId: string,
     status: OrderStatus,
@@ -169,7 +169,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
         .select(
           `
           id,
-          table_id,
           waiter_id,
           status,
           total_amount,
@@ -267,7 +266,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
 
           return {
             id: order.id,
-            tableId: order.table_id,
             waiter_id: order.waiter_id,
             waiterName: waiter?.name || "Unknown",
             status: order.status,
@@ -321,7 +319,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const createOrder = useCallback(
-    async (tableId: string, items: OrderItem[]): Promise<Order> => {
+    async (items: OrderItem[]): Promise<Order> => {
       try {
         setIsLoading(true);
         setError(null);
@@ -331,7 +329,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
           .from("orders")
           .insert([
             {
-              table_id: tableId,
               waiter_id: user?.id,
               total_amount: items.reduce(
                 (sum, item) => sum + item.price * item.quantity,
@@ -363,7 +360,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
           .select(
             `
             id,
-            table_id,
             waiter_id,
             status,
             total_amount,

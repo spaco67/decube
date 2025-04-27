@@ -3,19 +3,24 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import ThemeToggle from "../UI/ThemeToggle";
 import {
-  LogOut,
-  Menu,
-  Bell,
-  LayoutDashboard,
-  Users,
+  Calendar,
   ClipboardList,
+  Clock,
+  Home,
+  Menu,
+  Package,
   Settings,
-  TrendingUp,
-  Utensils,
-  Wine,
+  ChevronDown,
+  Bell,
+  LogOut,
+  File,
+  Users,
+  ChevronRight,
   Receipt,
-  Table2,
-  Warehouse,
+  X,
+  BarChart,
+  ShoppingCart,
+  CreditCard,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -152,62 +157,77 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   </p>
                   <Link
                     to="/admin/staff"
-                    className={`flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                    className={`flex items-center px-4 py-3 text-gray-600 transition-colors duration-300 transform rounded-lg dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 hover:text-gray-700 ${
                       location.pathname === "/admin/staff"
-                        ? "bg-teal-50 dark:bg-gray-700 text-teal-600 dark:text-teal-400"
+                        ? "bg-gray-100 dark:bg-gray-800 dark:text-gray-200 text-gray-700"
                         : ""
                     }`}
                   >
                     <Users size={20} className="mr-3" />
-                    <span className="text-sm font-medium">
-                      Staff Management
-                    </span>
-                  </Link>
-                  <Link
-                    to="/admin/tables"
-                    className={`flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition-colors ${
-                      location.pathname === "/admin/tables"
-                        ? "bg-teal-50 dark:bg-gray-700 text-teal-600 dark:text-teal-400"
-                        : ""
-                    }`}
-                  >
-                    <Table2 size={20} className="mr-3" />
-                    <span className="text-sm font-medium">
-                      Table Management
-                    </span>
+                    <span className="mx-1">Staff Management</span>
                   </Link>
                   <Link
                     to="/admin/inventory"
-                    className={`flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                    className={`flex items-center px-4 py-3 text-gray-600 transition-colors duration-300 transform rounded-lg dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 hover:text-gray-700 ${
                       location.pathname === "/admin/inventory"
-                        ? "bg-teal-50 dark:bg-gray-700 text-teal-600 dark:text-teal-400"
+                        ? "bg-gray-100 dark:bg-gray-800 dark:text-gray-200 text-gray-700"
                         : ""
                     }`}
                   >
-                    <Warehouse size={20} className="mr-3" />
-                    <span className="text-sm font-medium">Inventory</span>
+                    <Package size={20} className="mr-3" />
+                    <span className="mx-1">Inventory</span>
                   </Link>
                   <Link
                     to="/admin/reports"
-                    className={`flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                    className={`flex items-center px-4 py-3 text-gray-600 transition-colors duration-300 transform rounded-lg dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 hover:text-gray-700 ${
                       location.pathname === "/admin/reports"
-                        ? "bg-teal-50 dark:bg-gray-700 text-teal-600 dark:text-teal-400"
+                        ? "bg-gray-100 dark:bg-gray-800 dark:text-gray-200 text-gray-700"
                         : ""
                     }`}
                   >
-                    <TrendingUp size={20} className="mr-3" />
-                    <span className="text-sm font-medium">Reports</span>
+                    <BarChart size={20} className="mr-3" />
+                    <span className="mx-1">Reports</span>
                   </Link>
                   <Link
                     to="/admin/settings"
-                    className={`flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                    className={`flex items-center px-4 py-3 text-gray-600 transition-colors duration-300 transform rounded-lg dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 hover:text-gray-700 ${
                       location.pathname === "/admin/settings"
-                        ? "bg-teal-50 dark:bg-gray-700 text-teal-600 dark:text-teal-400"
+                        ? "bg-gray-100 dark:bg-gray-800 dark:text-gray-200 text-gray-700"
                         : ""
                     }`}
                   >
                     <Settings size={20} className="mr-3" />
-                    <span className="text-sm font-medium">Settings</span>
+                    <span className="mx-1">Settings</span>
+                  </Link>
+                </div>
+              )}
+
+              {user?.role === "accountant" && (
+                <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                    Accountant
+                  </p>
+                  <Link
+                    to="/accountant"
+                    className={`flex items-center px-4 py-3 text-gray-600 transition-colors duration-300 transform rounded-lg dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 hover:text-gray-700 ${
+                      location.pathname === "/accountant"
+                        ? "bg-gray-100 dark:bg-gray-800 dark:text-gray-200 text-gray-700"
+                        : ""
+                    }`}
+                  >
+                    <Home size={20} className="mr-3" />
+                    <span className="mx-1">Dashboard</span>
+                  </Link>
+                  <Link
+                    to="/accountant/receipts"
+                    className={`flex items-center px-4 py-3 text-gray-600 transition-colors duration-300 transform rounded-lg dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 hover:text-gray-700 ${
+                      location.pathname === "/accountant/receipts"
+                        ? "bg-gray-100 dark:bg-gray-800 dark:text-gray-200 text-gray-700"
+                        : ""
+                    }`}
+                  >
+                    <Receipt size={20} className="mr-3" />
+                    <span className="mx-1">Receipts</span>
                   </Link>
                 </div>
               )}

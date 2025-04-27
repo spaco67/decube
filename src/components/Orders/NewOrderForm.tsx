@@ -14,37 +14,13 @@ const NewOrderForm: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tables, setTables] = useState<Array<{ id: string; number: number }>>(
-    []
-  );
-  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
   const [activeCategory, setActiveCategory] =
     useState<MenuItem["category"]>("food");
 
   useEffect(() => {
     fetchMenuItems();
-    fetchTables();
   }, []);
-
-  const fetchTables = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("tables")
-        .select("id, number")
-        .order("number");
-
-      if (error) throw error;
-
-      setTables(data);
-      if (data.length > 0) {
-        setSelectedTableId(data[0].id);
-      }
-    } catch (err: any) {
-      setError(err.message);
-      console.error("Error fetching tables:", err);
-    }
-  };
 
   const fetchMenuItems = async () => {
     try {
@@ -58,10 +34,10 @@ const NewOrderForm: React.FC = () => {
 
       setMenuItems(
         data.map((item) => ({
-        id: item.id,
-        name: item.name,
+          id: item.id,
+          name: item.name,
           category: item.category as MenuItem["category"],
-        price: item.price,
+          price: item.price,
           preparationType: item.preparation_type as "kitchen" | "bar",
           quantity: 999, // Since menu_items doesn't track quantity, we'll assume available
         }))
@@ -88,7 +64,7 @@ const NewOrderForm: React.FC = () => {
     const existingItem = selectedItems.find(
       (item) => item.menuItemId === menuItem.id
     );
-    
+
     if (existingItem) {
       setSelectedItems((items) =>
         items.map((item) =>
@@ -125,10 +101,10 @@ const NewOrderForm: React.FC = () => {
     setSelectedItems((items) =>
       items
         .map((item) => {
-        if (item.menuItemId === menuItemId) {
-          return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
-        }
-        return item;
+          if (item.menuItemId === menuItemId) {
+            return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
+          }
+          return item;
         })
         .filter((item) => item.quantity > 0)
     );
@@ -142,27 +118,14 @@ const NewOrderForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedItems.length === 0 || !selectedTableId) return;
+    if (selectedItems.length === 0) return;
     setError(null);
 
     try {
-      // First check if table exists and is available
-      const { data: tableData, error: tableError } = await supabase
-        .from("tables")
-        .select("status")
-        .eq("id", selectedTableId)
-        .single();
-
-      if (tableError) throw new Error("Failed to check table status");
-      if (tableData.status !== "available") {
-        throw new Error("Selected table is not available");
-      }
-
-      // Create the order
+      // Create the order directly without table
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
-          table_id: selectedTableId,
           waiter_id: user?.id,
           status: "pending",
           total_amount: totalAmount,
@@ -187,14 +150,6 @@ const NewOrderForm: React.FC = () => {
 
       if (itemsError) throw itemsError;
 
-      // Update table status
-      const { error: updateTableError } = await supabase
-        .from("tables")
-        .update({ status: "occupied" })
-        .eq("id", selectedTableId);
-
-      if (updateTableError) throw updateTableError;
-
       navigate("/waiter");
     } catch (error: any) {
       console.error("Failed to create order:", error);
@@ -218,7 +173,7 @@ const NewOrderForm: React.FC = () => {
             </p>
           </div>
         )}
-        
+
         {error && (
           <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900/20 dark:text-red-400">
             {error}
@@ -266,25 +221,12 @@ const NewOrderForm: React.FC = () => {
       {/* Order Summary */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Table Number
-            </label>
-            <select
-              value={selectedTableId || ""}
-              onChange={(e) => setSelectedTableId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md"
-            >
-              {tables.map((table) => (
-                <option key={table.id} value={table.id}>
-                  Table {table.number}
-                </option>
-              ))}
-            </select>
-          </div>
           <h2 className="text-lg font-medium text-gray-900 dark:text-white">
             Order Summary
           </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Select items to create your order
+          </p>
         </div>
 
         <div className="p-4 space-y-4">
@@ -343,9 +285,9 @@ const NewOrderForm: React.FC = () => {
           </div>
           <button
             onClick={handleSubmit}
-            disabled={selectedItems.length === 0 || !selectedTableId}
+            disabled={selectedItems.length === 0}
             className={`w-full py-2 px-4 rounded-md text-white font-medium ${
-              selectedItems.length > 0 && selectedTableId
+              selectedItems.length > 0
                 ? "bg-teal-600 hover:bg-teal-700"
                 : "bg-gray-400 cursor-not-allowed"
             } transition-colors`}

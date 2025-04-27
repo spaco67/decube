@@ -31,6 +31,9 @@ const LoginPage: React.FC = () => {
       case "admin":
         navigate("/admin");
         break;
+      case "accountant":
+        navigate("/accountant");
+        break;
       default:
         navigate("/");
     }
